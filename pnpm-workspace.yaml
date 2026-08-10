@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: set this to true or false
+
+catalog:
+  '@types/node': ^24.13.3
+  zod: ^4.4.3
+
+catalogMode: prefer
+cleanupUnusedCatalogs: true
+minimumReleaseAge: 1440
+
+onlyBuiltDependencies:
+  - esbuild

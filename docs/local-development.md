@@ -1,12 +1,11 @@
 # Local development
 
-Harap's primary development environment is WSL 2 with Debian Linux. Run Node.js, pnpm, Git, and project scripts from a bash/zsh-compatible WSL shell.
+Harap's primary development environment is WSL 2 with Debian Linux. This repository stays at `/mnt/c/Users/Vin Tristan/Documents/harap`; do not move or duplicate it during Phase 2 work.
 
 ## Prerequisites
 
-Install `nvm` inside Debian and ensure it loads from your shell profile. The repository pins Node.js 24 LTS in `.nvmrc`.
-
 ```bash
+source ~/.nvm/nvm.sh
 nvm install
 nvm use
 node --version
@@ -14,99 +13,86 @@ node --version
 corepack enable
 corepack prepare pnpm@11.7.0 --activate
 pnpm --version
+supabase --version
+docker --version
 ```
 
-## Start Harap
-
-From the repository root:
-
-```bash
-pnpm install
-
-cp apps/web/.env.example apps/web/.env.local
-cp apps/api/.env.example apps/api/.env
-
-pnpm dev
-```
-
-Open:
-
-- Web: <http://localhost:5173>
-- API: <http://localhost:3001>
-- Health: <http://localhost:3001/api/v1/health>
-
-Stop both development servers with `Ctrl+C`.
+Node.js is pinned by `.nvmrc`. The Supabase CLI needs a running Docker-compatible engine for the local Auth/PostgreSQL stack.
 
 ## Environment files
 
-`apps/web/.env.local` contains browser-visible configuration. Every name beginning with `VITE_` is included in client code and must be treated as public.
-
-`apps/api/.env` contains server-only configuration. Phase 1 does not require Supabase or OpenAI credentials.
-
-Real environment files are ignored by Git. Commit only `.env.example` files.
-
-## Common commands
+Create ignored local files from the committed examples:
 
 ```bash
+cp apps/web/.env.example apps/web/.env.local
+cp apps/api/.env.example apps/api/.env
+```
+
+Browser (`apps/web/.env.local`):
+
+```dotenv
+VITE_APP_ENV=development
+VITE_API_URL=/api/v1
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=<local-or-hosted-anon-key>
+```
+
+API (`apps/api/.env`):
+
+```dotenv
+NODE_ENV=development
+PORT=3001
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+LOG_LEVEL=debug
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_ANON_KEY=<same-low-privilege-anon-key>
+```
+
+Never add a service-role key. The anon key is browser-visible and is not a secret; RLS and user access tokens are the authorization boundary. Real environment files remain ignored by Git.
+
+In development, Vite proxies the same-origin `/api` path to Express inside WSL. This keeps browser requests on the working web origin while preserving the bearer token and the API's authentication and RLS checks.
+
+## Start the local stack
+
+```bash
+pnpm install
+pnpm db:start
+pnpm db:reset
+pnpm db:test
 pnpm dev
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+```
+
+`supabase start` prints the local API URL and anon key. Copy those exact public values into both environment files. `db:reset` rebuilds the database from committed migrations. Local confirmation and recovery messages appear at <http://localhost:54324> rather than being delivered externally.
+
+`pnpm db:reset` deletes data in the local Docker database before replaying migrations. Do not add `--linked` or run a remote reset as part of ordinary development; remote resets can destroy hosted data.
+
+## Quality checks
+
+```bash
 pnpm check
 pnpm audit:prod
-
-pnpm --filter @harap/web dev
-pnpm --filter @harap/api dev
 ```
 
-`pnpm check` is the local quality gate and should pass before opening a pull request. CI repeats the checks from a frozen lockfile.
-
-## Repository location in WSL
-
-The current working copy may be under `/mnt/c`. This works, but file watching and dependency-heavy operations are generally faster in the WSL Linux filesystem.
-
-Do not move or delete the current copy while it contains uncommitted work. After the repository has at least one commit, the safest migration is to clone it and verify the clone:
-
-```bash
-git status
-git log --oneline -5
-
-mkdir -p ~/projects
-git clone "/mnt/c/Users/Vin Tristan/Documents/harap" ~/projects/harap
-cd ~/projects/harap
-
-git status
-git log --oneline -5
-nvm use
-pnpm install --frozen-lockfile
-pnpm check
-```
-
-If a remote repository is configured, clone the remote URL instead of the `/mnt/c` path. Keep the original copy until the Linux clone's history, files, checks, and remote configuration have all been verified.
-
-Never copy `node_modules`; install dependencies again inside the Linux filesystem.
+Unit/integration tests mock Supabase and make no network calls. `pnpm db:test` is separate because pgTAP runs against the Docker-backed local PostgreSQL instance. CI repeats both categories in separate jobs.
 
 ## Troubleshooting
 
-### `pnpm` is not found
+### Public environment configuration is invalid
 
-```bash
-nvm use
-corepack enable
-corepack prepare pnpm@11.7.0 --activate
-```
+All four `VITE_*` values are required at build/start. Compare `apps/web/.env.local` with the example. Validation reports variable names without printing values.
 
-### The API fails during startup
+### API environment configuration is invalid
 
-Compare `apps/api/.env` with `apps/api/.env.example`. Validation reports invalid variable names but intentionally does not print their values.
+Both `SUPABASE_URL` and `SUPABASE_ANON_KEY` are required outside tests. The API does not accept `VITE_*` names.
 
-### The web app reports that the API is unavailable
+### Confirmation links return to the wrong page
 
-Confirm the API is running and check:
+Set the hosted Supabase Site URL and redirect allowlist exactly as described in [authentication setup](authentication.md). Local configuration is already tracked in `supabase/config.toml`.
 
-```bash
-curl --fail-with-body http://localhost:3001/api/v1/health
-```
+### Profile requests return 401
 
-Also confirm `VITE_API_URL` and the API's `CORS_ALLOWED_ORIGINS` use the expected development URLs.
+Confirm the browser restored a Supabase session and that the web and API applications point at the same Supabase project. Do not decode or replace the access token manually.
+
+### Database commands cannot reach Docker
+
+Start Docker Desktop with WSL integration (or another compatible engine), then confirm `docker info` succeeds inside Debian before running `pnpm db:start`.

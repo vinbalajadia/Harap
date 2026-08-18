@@ -1,0 +1,21 @@
+# Phase 2 security checklist
+
+- [x] No service-role or secret Supabase key is present in source or examples.
+- [x] Browser variables contain only public URL/anon-key configuration.
+- [x] API variables are validated without printing values.
+- [x] Bearer tokens are validated with Supabase Auth before identity is trusted.
+- [x] Tokens, passwords, cookies, and common secret fields are redacted from structured logs.
+- [x] Profile ownership is derived only from the verified user.
+- [x] Profile request bodies are strict and cannot include `id`.
+- [x] Backend data access carries the user token so RLS is active.
+- [x] RLS and grants independently prevent cross-user reads and writes.
+- [x] Auth/provider errors are mapped to safe messages.
+- [x] Forgot-password messaging avoids account enumeration.
+- [x] Reset UI requires a password-recovery auth event.
+- [x] Query cache is cleared on logout and API `401`.
+- [x] Bearer-header authentication does not rely on ambient cookies; CSRF is documented and will be revisited if transport changes.
+- [x] Harap creates no custom persistent token store and renders profile values through React escaping.
+- [x] Production browser source maps remain disabled.
+- [ ] Hosted redirect allowlists and email confirmation are configured by the project owner.
+- [ ] Hosted lifecycle and email delivery are manually verified after configuration.
+- [ ] Deployment proxy topology is verified before enabling Express `trust proxy`.

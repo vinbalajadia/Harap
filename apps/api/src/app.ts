@@ -10,14 +10,27 @@ import { errorHandler } from './middleware/error-handler.js'
 import { notFound } from './middleware/not-found.js'
 import { requestContext } from './middleware/request-context.js'
 import { requestLogger } from './middleware/request-logger.js'
-import { apiRouter } from './routes/index.js'
+import {
+  SupabaseProfileRepository,
+  type ProfileRepository,
+} from './repositories/profile.repository.js'
+import { createApiRouter } from './routes/index.js'
+import { SupabaseAuthService, type AuthService } from './services/auth.service.js'
+import { ProfileService } from './services/profile.service.js'
 
 export interface CreateAppOptions {
+  authService?: AuthService
+  profileRepository?: ProfileRepository
   rateLimitMax?: number
 }
 
-export function createApp({ rateLimitMax = 100 }: CreateAppOptions = {}): Express {
+export function createApp({
+  authService = new SupabaseAuthService(),
+  profileRepository = new SupabaseProfileRepository(),
+  rateLimitMax = 100,
+}: CreateAppOptions = {}): Express {
   const app = express()
+  const profileService = new ProfileService(profileRepository)
 
   app.disable('x-powered-by')
   app.use(requestContext)
@@ -68,7 +81,7 @@ export function createApp({ rateLimitMax = 100 }: CreateAppOptions = {}): Expres
     }),
   )
   app.use(requestLogger)
-  app.use('/api/v1', apiRouter)
+  app.use('/api/v1', createApiRouter(authService, profileService))
   app.use(notFound)
   app.use(errorHandler)
 

@@ -22,3 +22,7 @@ Thumbs.db
 
 # React Router and Vite-generated state
 .react-router/
+
+# Supabase CLI local/link state
+supabase/.branches/
+supabase/.temp/

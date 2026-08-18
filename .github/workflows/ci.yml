@@ -17,6 +17,11 @@ jobs:
     name: Quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      VITE_API_URL: http://localhost:3001/api/v1
+      VITE_APP_ENV: test
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_ANON_KEY: test-anon-key-not-used-for-network-calls
 
     steps:
       - name: Check out repository

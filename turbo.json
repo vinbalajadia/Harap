@@ -1,5 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "CORS_ALLOWED_ORIGINS",
+    "LOG_LEVEL",
+    "NODE_ENV",
+    "PORT",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_URL",
+    "VITE_API_URL",
+    "VITE_APP_ENV",
+    "VITE_SUPABASE_ANON_KEY",
+    "VITE_SUPABASE_URL"
+  ],
   "ui": "stream",
   "tasks": {
     "build": {

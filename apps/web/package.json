@@ -13,12 +13,15 @@
   },
   "dependencies": {
     "@harap/contracts": "workspace:*",
+    "@hookform/resolvers": "catalog:",
+    "@supabase/supabase-js": "catalog:",
     "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-hook-form": "catalog:",
     "react-router": "^8.2.0",
     "tailwind-merge": "^3.5.0",
     "zod": "catalog:"

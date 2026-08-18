@@ -16,12 +16,21 @@ export function LandingPage() {
             <AppLogo />
           </Link>
           <nav aria-label="Primary navigation" className="flex items-center gap-1">
-            <a className={buttonVariants({ size: 'sm', variant: 'ghost' })} href="#foundation">
+            <a
+              className={cn(
+                buttonVariants({ size: 'sm', variant: 'ghost' }),
+                'hidden sm:inline-flex',
+              )}
+              href="#foundation"
+            >
               Foundation
             </a>
-            <a className={buttonVariants({ size: 'sm', variant: 'ghost' })} href="#status">
-              Status
-            </a>
+            <Link className={buttonVariants({ size: 'sm', variant: 'ghost' })} to="/login">
+              Sign in
+            </Link>
+            <Link className={buttonVariants({ size: 'sm' })} to="/register">
+              Get started
+            </Link>
           </nav>
         </div>
       </header>
@@ -40,14 +49,14 @@ export function LandingPage() {
               Harap is becoming a personal interview mentor that helps aspiring software engineers
               practice, understand their weaknesses, and improve with every session.
             </p>
-            <a className={cn(buttonVariants({ size: 'lg' }), 'mt-8')} href="#foundation">
-              View the foundation
+            <Link className={cn(buttonVariants({ size: 'lg' }), 'mt-8')} to="/register">
+              Start your profile
               <ArrowRight aria-hidden="true" className="size-4" />
-            </a>
+            </Link>
           </div>
 
           <aside
-            aria-label="Phase 1 status"
+            aria-label="Phase 2 status"
             className="rounded-xl border border-border bg-card p-5 shadow-2xl shadow-black/20"
             id="status"
           >
@@ -56,8 +65,8 @@ export function LandingPage() {
                 <ShieldCheck aria-hidden="true" className="size-4" />
               </span>
               <div>
-                <p className="font-medium">Foundation ready</p>
-                <p className="text-sm text-muted-foreground">Secure, typed, and testable</p>
+                <p className="font-medium">Accounts ready</p>
+                <p className="text-sm text-muted-foreground">Verified, private, and personal</p>
               </div>
             </div>
             <div className="mt-5 border-t border-border pt-4">
@@ -84,7 +93,7 @@ export function LandingPage() {
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p>Harap · Built for deliberate practice.</p>
-        <p>Phase 1 foundation</p>
+        <p>Phase 2 identity foundation</p>
       </footer>
     </div>
   )

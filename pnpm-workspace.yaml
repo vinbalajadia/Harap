@@ -3,7 +3,7 @@ packages:
   - packages/*
 
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
 
 catalog:
   '@hookform/resolvers': ^5.7.1
@@ -19,6 +19,3 @@ catalog:
 catalogMode: prefer
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
-
-onlyBuiltDependencies:
-  - esbuild

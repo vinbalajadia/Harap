@@ -39,7 +39,7 @@
     "eslint": "^9.39.2",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.2",
+    "typescript": "~7.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.0"
   }

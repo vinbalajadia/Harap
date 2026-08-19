@@ -60,7 +60,7 @@ export function createResumeRouter(
   authService: AuthService,
   resumeService: ResumeService,
   { analysisRateLimitMax = 10, uploadRateLimitMax = 5 }: ResumeRouterOptions = {},
-) {
+): Router {
   const router = Router()
   const authenticate = createAuthenticate(authService)
   const controller = createResumeController(resumeService)

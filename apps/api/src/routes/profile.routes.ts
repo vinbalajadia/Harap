@@ -7,7 +7,10 @@ import { validateBody } from '../middleware/validate-body.js'
 import type { AuthService } from '../services/auth.service.js'
 import type { ProfileService } from '../services/profile.service.js'
 
-export function createProfileRouter(authService: AuthService, profileService: ProfileService) {
+export function createProfileRouter(
+  authService: AuthService,
+  profileService: ProfileService,
+): Router {
   const router = Router()
   const authenticate = createAuthenticate(authService)
   const controller = createProfileController(profileService)

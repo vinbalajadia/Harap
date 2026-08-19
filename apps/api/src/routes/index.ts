@@ -12,7 +12,7 @@ export function createApiRouter(
   profileService: ProfileService,
   resumeService: ResumeService,
   resumeRouterOptions?: ResumeRouterOptions,
-) {
+): Router {
   const apiRouter = Router()
 
   apiRouter.use('/health', healthRouter)

@@ -9,7 +9,7 @@ catalog:
   '@hookform/resolvers': ^5.7.1
   '@supabase/supabase-js': ^2.112.2
   '@types/multer': ^2.2.0
-  '@types/node': ^24.13.3
+  '@types/node': ^26.2.0
   multer: ^2.2.0
   openai: ^7.4.0
   pdfjs-dist: ^6.2.108

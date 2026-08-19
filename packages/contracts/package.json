@@ -28,7 +28,7 @@
     "@harap/eslint-config": "workspace:*",
     "@harap/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "eslint": "^9.39.2",
+    "eslint": "^10.8.1",
     "typescript": "~6.0.2",
     "vitest": "^4.1.0"
   }

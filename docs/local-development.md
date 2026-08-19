@@ -1,6 +1,6 @@
 # Local development
 
-Harap's primary development environment is WSL 2 with Debian Linux. This repository stays at `/mnt/c/Users/Vin Tristan/Documents/harap`; do not move or duplicate it during Phase 2 work.
+Harap's primary development environment is WSL 2 with Debian Linux. This repository stays at `/mnt/c/Users/Vin Tristan/Documents/harap`; do not move or duplicate it during Phase 3 work.
 
 ## Prerequisites
 
@@ -44,11 +44,13 @@ NODE_ENV=development
 PORT=3001
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 LOG_LEVEL=debug
+OPENAI_API_KEY=<optional-backend-only-key>
+OPENAI_MODEL=gpt-4o-mini
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_ANON_KEY=<same-low-privilege-anon-key>
 ```
 
-Never add a service-role key. The anon key is browser-visible and is not a secret; RLS and user access tokens are the authorization boundary. Real environment files remain ignored by Git.
+Never add a service-role key. The anon key is browser-visible and is not a secret; RLS and user access tokens are the authorization boundary. Keep `OPENAI_API_KEY` only in `apps/api/.env` or backend deployment secrets—never in `apps/web` or a `VITE_*` variable. Without it, uploads and manual candidate entry work, while automatic analysis returns a safe unavailable state. Real environment files remain ignored by Git.
 
 In development, Vite proxies the same-origin `/api` path to Express inside WSL. This keeps browser requests on the working web origin while preserving the bearer token and the API's authentication and RLS checks.
 
@@ -75,6 +77,14 @@ pnpm audit:prod
 
 Unit/integration tests mock Supabase and make no network calls. `pnpm db:test` is separate because pgTAP runs against the Docker-backed local PostgreSQL instance. CI repeats both categories in separate jobs.
 
+Preview hosted migration changes without applying them:
+
+```bash
+supabase db push --dry-run
+```
+
+Do not run a real linked `supabase db push` until the migration has been reviewed and explicitly authorized.
+
 ## Troubleshooting
 
 ### Public environment configuration is invalid
@@ -92,6 +102,14 @@ Set the hosted Supabase Site URL and redirect allowlist exactly as described in 
 ### Profile requests return 401
 
 Confirm the browser restored a Supabase session and that the web and API applications point at the same Supabase project. Do not decode or replace the access token manually.
+
+### Resume analysis is unavailable
+
+Confirm `OPENAI_API_KEY` exists in `apps/api/.env`, restart `pnpm dev`, and check that `OPENAI_MODEL` names a Responses API model supporting structured output. Do not place the key in the browser environment. The saved PDF remains private and candidate details can be entered manually.
+
+### A PDF cannot be analyzed
+
+Harap supports text-based PDFs only: at most 5 MiB and 20 pages. Image-only scans need OCR, which Phase 3 intentionally does not invoke. Replace the file with a text-based PDF or use manual entry.
 
 ### Database commands cannot reach Docker
 

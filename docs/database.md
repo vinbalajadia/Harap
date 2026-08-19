@@ -1,4 +1,4 @@
-# Profiles database and RLS
+# Profiles, resumes, and RLS
 
 ## Schema
 
@@ -54,3 +54,19 @@ pnpm db:test
 ```
 
 The suite verifies table/primary-key structure, trigger provisioning, self-only reads, owned updates, and cross-user update denial. `.github/workflows/database.yml` runs the same migration reset and tests in CI.
+
+## Resume model
+
+`public.resumes` stores one active row per `user_id`. The row contains safe file metadata, a generated private `storage_path`, SHA-256 content digest, constrained workflow status, bounded candidate JSONB, safe failure code, confirmation/analysis timestamps, and audit timestamps. Full extracted PDF text is intentionally not persisted.
+
+Candidate data is JSONB for Phase 3 because the application reads, validates, edits, and confirms it as one bounded document. Its strict shared Zod schema supplies application-level shape and size limits; PostgreSQL independently requires a JSON object. This avoids premature join-heavy tables while leaving a future normalization migration possible if analytics require it.
+
+The status constraint allows only `uploaded`, `processing`, `review_required`, `ready`, or `failed`. A lifecycle constraint couples status with candidate data, failure code, and confirmation timestamp so misleading combinations cannot be stored. The foreign key cascades on Auth-user deletion; the API delete flow removes the private object before deleting the row.
+
+## Resume database and Storage authorization
+
+Authenticated users can select, insert, update, and delete only the row whose `user_id` equals `auth.uid()`. Column grants and strict API contracts add defense in depth. A unique constraint enforces one active resume per user.
+
+Migration `supabase/migrations/20260818000100_create_resumes.sql` creates or configures a private `resumes` bucket with a 5 MiB size limit and `application/pdf` MIME allowlist. Storage policies require the first path segment to equal `auth.uid()`; select, update, and delete also require Storage ownership. Objects follow `user-id/resume-id/source.pdf`. No public URL is produced.
+
+`supabase/tests/database/resumes_rls.test.sql` verifies user A/user B/anonymous isolation for rows and objects, plus private-bucket and size-limit configuration. Run it with the same local `pnpm db:start`, `pnpm db:reset`, and `pnpm db:test` commands above.

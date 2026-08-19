@@ -85,6 +85,12 @@ export function createAppRouter() {
                       }),
                       path: '/app/profile',
                     },
+                    {
+                      lazy: async () => ({
+                        Component: (await import('@/features/resume/resume-page')).ResumePage,
+                      }),
+                      path: '/app/resume',
+                    },
                   ],
                 },
               ],

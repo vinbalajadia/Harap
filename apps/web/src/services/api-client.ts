@@ -70,6 +70,31 @@ export async function authenticatedApiRequest<T>(
   return result.data
 }
 
+export async function authenticatedApiRequestWithoutResponse(
+  path: string,
+  options: RequestInit = {},
+): Promise<void> {
+  const accessToken = getAccessToken()
+
+  if (accessToken === null) {
+    throw new ApiClientError('Sign in to continue.', 401, 'AUTH_REQUIRED')
+  }
+
+  const headers = new Headers(options.headers)
+  headers.set('Accept', 'application/json')
+  headers.set('Authorization', `Bearer ${accessToken}`)
+  const response = await fetch(`${webEnv.apiUrl}${path}`, { ...options, headers })
+
+  if (!response.ok) {
+    const error = await readApiError(response)
+    if (response.status === 401) {
+      setAccessToken(null)
+      await supabase.auth.signOut({ scope: 'local' })
+    }
+    throw error
+  }
+}
+
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthData> {
   const requestOptions: RequestInit = {
     headers: { Accept: 'application/json' },

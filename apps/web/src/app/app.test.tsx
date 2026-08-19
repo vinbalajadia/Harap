@@ -1,4 +1,12 @@
-import { onboardingProfileSchema, type Profile } from '@harap/contracts'
+import {
+  onboardingProfileSchema,
+  resumeUpdateSchema,
+  type CandidateResumeContent,
+  type CandidateResumeData,
+  type Profile,
+  type Resume,
+  type RoleAlignment,
+} from '@harap/contracts'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -50,6 +58,37 @@ const session: MockSession = {
   access_token: 'valid-user-a',
   user: { email: 'user-a@example.test', id: userId },
 }
+const candidateContent: CandidateResumeContent = {
+  achievements: ['Improved a synthetic workflow by 20%.'],
+  education: [],
+  experience: [],
+  projects: [],
+  skills: ['Problem solving'],
+  summary: 'Synthetic frontend engineer focused on reliable product delivery.',
+  technologies: ['TypeScript', 'React'],
+}
+const candidateData: CandidateResumeData = {
+  ...candidateContent,
+  roleAlignment: null,
+}
+const strongAlignment: RoleAlignment = {
+  gaps: [],
+  level: 'strong',
+  signals: ['Built TypeScript services and React applications.'],
+  targetRole: 'Software Engineer',
+}
+const partialAlignment: RoleAlignment = {
+  gaps: ['Limited evidence of end-to-end software delivery.'],
+  level: 'partial',
+  signals: ['Built Python automation and SQL reporting tools.'],
+  targetRole: 'Software Engineer',
+}
+const lowAlignment: RoleAlignment = {
+  gaps: ['No software implementation or technical project evidence appears in this resume.'],
+  level: 'low',
+  signals: ['Documented IT controls and risk assessments.'],
+  targetRole: 'Software Engineer',
+}
 
 function createProfile(overrides: Partial<Profile> = {}): Profile {
   return {
@@ -76,18 +115,66 @@ function apiResponse(data: unknown): Response {
   )
 }
 
+function apiErrorResponse(message: string): Response {
+  return new Response(
+    JSON.stringify({
+      error: { code: 'RESUME_UPDATE_FAILED', message },
+      meta: { requestId: '0198a7cd-14f8-7000-8000-000000000001' },
+    }),
+    { headers: { 'Content-Type': 'application/json' }, status: 503 },
+  )
+}
+
+function createCandidateResume(
+  status: 'ready' | 'review_required',
+  roleAlignment: RoleAlignment | null = null,
+): Resume {
+  return {
+    candidateData: { ...candidateData, roleAlignment },
+    confirmedAt: status === 'ready' ? '2026-08-18T03:00:00.000Z' : null,
+    createdAt: '2026-08-18T01:00:00.000Z',
+    failureCode: null,
+    fileSizeBytes: 1024,
+    id: '80000000-0000-4000-8000-000000000001',
+    lastAnalyzedAt: '2026-08-18T02:00:00.000Z',
+    originalFilename: 'synthetic-resume.pdf',
+    status,
+    updatedAt: status === 'ready' ? '2026-08-18T03:00:00.000Z' : '2026-08-18T02:00:00.000Z',
+  }
+}
+
+function createGate() {
+  let release: () => void = () => undefined
+  const promise = new Promise<void>((resolve) => {
+    release = () => resolve()
+  })
+  return { promise, release }
+}
+
 describe('Harap application flows', () => {
   let profile = createProfile()
+  let resume: Resume | null = null
+  let analyzedCandidateData: CandidateResumeData = candidateData
+  let confirmationGate: Promise<void> | null = null
+  let confirmationShouldFail = false
   let lastProfileRequestUrl: string | null = null
   let lastProfileUpdate: unknown = null
+  let lastResumeUpdate: unknown = null
+  let resumePatchRequests = 0
 
   beforeEach(() => {
     authState.callback = null
     authState.currentSession = null
     authState.deferInitialEvent = false
     profile = createProfile()
+    resume = null
+    analyzedCandidateData = candidateData
+    confirmationGate = null
+    confirmationShouldFail = false
     lastProfileRequestUrl = null
     lastProfileUpdate = null
+    lastResumeUpdate = null
+    resumePatchRequests = 0
     vi.clearAllMocks()
 
     authState.signInWithPassword.mockImplementation(async () => {
@@ -139,6 +226,64 @@ describe('Harap application flows', () => {
           lastProfileRequestUrl = url
           return apiResponse(profile)
         }
+
+        if (url.endsWith('/resume/analyze') && init?.method === 'POST') {
+          if (resume === null) return new Response(null, { status: 404 })
+          resume = {
+            ...resume,
+            candidateData: analyzedCandidateData,
+            lastAnalyzedAt: '2026-08-18T02:00:00.000Z',
+            status: 'review_required',
+            updatedAt: '2026-08-18T02:00:00.000Z',
+          }
+          return apiResponse(resume)
+        }
+
+        if (url.endsWith('/resume') && init?.method === 'POST') {
+          expect(init.body).toBeInstanceOf(FormData)
+          resume = {
+            candidateData: null,
+            confirmedAt: null,
+            createdAt: '2026-08-18T01:00:00.000Z',
+            failureCode: null,
+            fileSizeBytes: 24,
+            id: '80000000-0000-4000-8000-000000000001',
+            lastAnalyzedAt: null,
+            originalFilename: 'synthetic-resume.pdf',
+            status: 'uploaded',
+            updatedAt: '2026-08-18T01:00:00.000Z',
+          }
+          return apiResponse(resume)
+        }
+
+        if (url.endsWith('/resume') && init?.method === 'PATCH') {
+          resumePatchRequests += 1
+          lastResumeUpdate = JSON.parse(String(init.body)) as unknown
+          if (resume === null) return new Response(null, { status: 404 })
+          if (confirmationGate !== null) await confirmationGate
+          if (confirmationShouldFail) {
+            return apiErrorResponse('Candidate context could not be saved. Try again.')
+          }
+          const update = resumeUpdateSchema.parse(lastResumeUpdate)
+          resume = {
+            ...resume,
+            candidateData: {
+              ...update.candidateData,
+              roleAlignment: resume.candidateData?.roleAlignment ?? null,
+            },
+            confirmedAt: '2026-08-18T03:00:00.000Z',
+            status: 'ready',
+            updatedAt: '2026-08-18T03:00:00.000Z',
+          }
+          return apiResponse(resume)
+        }
+
+        if (url.endsWith('/resume') && init?.method === 'DELETE') {
+          resume = null
+          return new Response(null, { status: 204 })
+        }
+
+        if (url.endsWith('/resume')) return apiResponse(resume)
 
         return new Response(null, { status: 404 })
       }),
@@ -292,6 +437,367 @@ describe('Harap application flows', () => {
 
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeTruthy()
     expect(authState.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('uploads, analyzes, reviews, and confirms synthetic candidate context', async () => {
+    const user = userEvent.setup()
+    authState.currentSession = session
+    profile = createProfile({
+      displayName: 'User A',
+      experienceLevel: 'fresh_graduate',
+      interviewGoal: 'Prepare for a frontend engineering internship interview.',
+      onboardingCompleted: true,
+      preferredLanguage: 'typescript',
+      targetRole: 'Frontend Engineer',
+    })
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Turn your experience into interview context.',
+      }),
+    ).toBeTruthy()
+    await user.upload(
+      screen.getByLabelText('PDF resume'),
+      new File(['%PDF-1.7 synthetic'], 'synthetic-resume.pdf', { type: 'application/pdf' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Upload and analyze' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review your candidate context.' }),
+    ).toBeTruthy()
+    expect(screen.getByText('Review required')).toBeTruthy()
+    expect(screen.getByDisplayValue(candidateData.summary)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Confirm candidate context' }))
+
+    expect(await screen.findByRole('heading', { name: 'Candidate context ready.' })).toBeTruthy()
+    expect(screen.queryByText('Review required')).toBeNull()
+    expect(screen.getByText('Candidate context confirmed and ready for coaching.')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Candidate context confirmed' }).hasAttribute('disabled'),
+    ).toBe(true)
+    expect(resumePatchRequests).toBe(1)
+    expect(lastResumeUpdate).toEqual({ candidateData: candidateContent })
+  })
+
+  it('keeps strong alignment in the normal review flow without a warning', async () => {
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true, targetRole: 'Software Engineer' })
+    resume = createCandidateResume('review_required', strongAlignment)
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review your candidate context.' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Confirm candidate context' })).toBeTruthy()
+    expect(screen.queryByText(/This resume .* evidence for Software Engineer\./)).toBeNull()
+  })
+
+  it('shows partial career-transition evidence and allows confirmed continuation', async () => {
+    const user = userEvent.setup()
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true, targetRole: 'Software Engineer' })
+    resume = createCandidateResume('review_required', partialAlignment)
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'This resume offers some evidence for Software Engineer.',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText('Built Python automation and SQL reporting tools.')).toBeTruthy()
+    expect(screen.getByText('Limited evidence of end-to-end software delivery.')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Continue with this resume' }))
+
+    expect(
+      screen.queryByRole('heading', {
+        name: 'This resume offers some evidence for Software Engineer.',
+      }),
+    ).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Confirm candidate context' }))
+    expect(
+      await screen.findByText('Candidate context confirmed and ready for coaching.'),
+    ).toBeTruthy()
+    expect(resume?.candidateData?.roleAlignment).toEqual(partialAlignment)
+  })
+
+  it('shows low alignment as advisory and allows the user to continue anyway', async () => {
+    const user = userEvent.setup()
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true, targetRole: 'Software Engineer' })
+    resume = createCandidateResume('review_required', lowAlignment)
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'This resume may offer limited evidence for Software Engineer.',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText(/not your potential or qualification/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Upload another resume' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Continue anyway' }))
+
+    expect(
+      screen.queryByRole('heading', {
+        name: 'This resume may offer limited evidence for Software Engineer.',
+      }),
+    ).toBeNull()
+    expect(screen.getByRole('button', { name: 'Confirm candidate context' })).toBeTruthy()
+  })
+
+  it('reuses replacement upload and replaces the old alignment assessment', async () => {
+    const user = userEvent.setup()
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true, targetRole: 'Software Engineer' })
+    resume = createCandidateResume('review_required', lowAlignment)
+    analyzedCandidateData = { ...candidateData, roleAlignment: strongAlignment }
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Upload another resume' }))
+    expect(screen.getByRole('heading', { name: 'Replace your resume' })).toBeTruthy()
+    await user.upload(
+      screen.getByLabelText('PDF resume'),
+      new File(['%PDF-1.7 replacement'], 'replacement.pdf', { type: 'application/pdf' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Upload and analyze' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review your candidate context.' }),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'This resume may offer limited evidence for Software Engineer.',
+      }),
+    ).toBeNull()
+    expect(resume?.candidateData?.roleAlignment).toEqual(strongAlignment)
+  })
+
+  it('shows pending confirmation and prevents repeated submissions', async () => {
+    const user = userEvent.setup()
+    const gate = createGate()
+    confirmationGate = gate.promise
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true })
+    resume = createCandidateResume('review_required')
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    const confirmButton = await screen.findByRole('button', {
+      name: 'Confirm candidate context',
+    })
+    await user.click(confirmButton)
+
+    expect(await screen.findByText('Saving candidate context…')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Saving context…' }).hasAttribute('disabled')).toBe(
+      true,
+    )
+    await user.click(screen.getByRole('button', { name: 'Saving context…' }))
+    expect(resumePatchRequests).toBe(1)
+
+    gate.release()
+    expect(
+      await screen.findByText('Candidate context confirmed and ready for coaching.'),
+    ).toBeTruthy()
+    expect(resumePatchRequests).toBe(1)
+  })
+
+  it('renders server-confirmed context as ready after a full page load', async () => {
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true })
+    resume = createCandidateResume('ready', partialAlignment)
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Candidate context ready.' })).toBeTruthy()
+    expect(screen.queryByText('Review required')).toBeNull()
+    expect(screen.getByText('Candidate context confirmed and ready for coaching.')).toBeTruthy()
+    expect(
+      screen.getByRole('heading', {
+        name: 'This resume offers some evidence for Software Engineer.',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Candidate context confirmed' }).hasAttribute('disabled'),
+    ).toBe(true)
+    expect(resumePatchRequests).toBe(0)
+  })
+
+  it('keeps review state on a failed confirmation and allows retry', async () => {
+    const user = userEvent.setup()
+    confirmationShouldFail = true
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true })
+    resume = createCandidateResume('review_required')
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Confirm candidate context' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Candidate context could not be saved. Try again.',
+    )
+    expect(screen.getByText('Review required')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Confirm candidate context' }).hasAttribute('disabled'),
+    ).toBe(false)
+
+    confirmationShouldFail = false
+    await user.click(screen.getByRole('button', { name: 'Confirm candidate context' }))
+    expect(
+      await screen.findByText('Candidate context confirmed and ready for coaching.'),
+    ).toBeTruthy()
+    expect(resumePatchRequests).toBe(2)
+  })
+
+  it('saves edits to confirmed context without introducing a review state', async () => {
+    const user = userEvent.setup()
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true })
+    resume = createCandidateResume('ready')
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    const summary = await screen.findByLabelText('Professional summary')
+    await user.clear(summary)
+    await user.type(summary, 'Updated confirmed candidate context.')
+
+    expect(
+      screen.getByText('You have unsaved changes. Save them to update your confirmed context.'),
+    ).toBeTruthy()
+    expect(screen.queryByText('Review required')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Save candidate context' }))
+
+    expect(
+      await screen.findByText('Candidate context confirmed and ready for coaching.'),
+    ).toBeTruthy()
+    expect(lastResumeUpdate).toEqual({
+      candidateData: { ...candidateContent, summary: 'Updated confirmed candidate context.' },
+    })
+    expect(screen.queryByText('Review required')).toBeNull()
+  })
+
+  it('keeps missing and extracted experience and education dates editable', async () => {
+    const user = userEvent.setup()
+    const datedContent: CandidateResumeContent = {
+      ...candidateContent,
+      education: [
+        {
+          credential: 'Bachelor of Science',
+          endDate: '2023',
+          fieldOfStudy: 'Computer Science',
+          highlights: [],
+          institution: 'Example University',
+          startDate: '2021',
+        },
+      ],
+      experience: [
+        {
+          endDate: null,
+          highlights: [],
+          location: null,
+          organization: 'Example Corp',
+          role: 'Software Engineer',
+          startDate: 'August 2023',
+          technologies: ['TypeScript'],
+        },
+      ],
+    }
+    authState.currentSession = session
+    profile = createProfile({ onboardingCompleted: true })
+    resume = {
+      ...createCandidateResume('ready'),
+      candidateData: { ...datedContent, roleAlignment: null },
+    }
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+
+    const startDates = await screen.findAllByLabelText('Start')
+    const endDates = screen.getAllByLabelText('End')
+    const [experienceStart, educationStart] = startDates
+    const [experienceEnd, educationEnd] = endDates
+    if (
+      !(experienceStart instanceof HTMLInputElement) ||
+      !(experienceEnd instanceof HTMLInputElement) ||
+      !(educationStart instanceof HTMLInputElement) ||
+      !(educationEnd instanceof HTMLInputElement)
+    ) {
+      throw new Error('Expected editable resume date inputs')
+    }
+    expect(experienceStart.value).toBe('August 2023')
+    expect(experienceEnd.value).toBe('')
+    expect(educationStart.value).toBe('2021')
+    expect(educationEnd.value).toBe('2023')
+    expect(screen.getByRole('button', { name: 'Add role' }).getAttribute('type')).toBe('button')
+    expect(screen.getByRole('button', { name: 'Remove role' }).getAttribute('type')).toBe('button')
+
+    await user.type(experienceEnd, 'Present')
+    await user.clear(educationStart)
+    await user.type(educationStart, '2020')
+    await user.click(screen.getByRole('button', { name: 'Save candidate context' }))
+
+    expect(
+      await screen.findByText('Candidate context confirmed and ready for coaching.'),
+    ).toBeTruthy()
+    expect(lastResumeUpdate).toEqual({
+      candidateData: {
+        ...datedContent,
+        education: [{ ...datedContent.education[0], startDate: '2020' }],
+        experience: [{ ...datedContent.experience[0], endDate: 'Present' }],
+      },
+    })
+  })
+
+  it('validates file selection and requires confirmation before deleting resume data', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    authState.currentSession = session
+    profile = createProfile({
+      displayName: 'User A',
+      experienceLevel: 'fresh_graduate',
+      interviewGoal: 'Prepare for a frontend engineering internship interview.',
+      onboardingCompleted: true,
+      preferredLanguage: 'typescript',
+      targetRole: 'Frontend Engineer',
+    })
+    window.history.pushState({}, '', '/app/resume')
+    const view = render(<App />)
+
+    await screen.findByRole('heading', { name: 'Turn your experience into interview context.' })
+    await user.upload(
+      screen.getByLabelText('PDF resume'),
+      new File(['not a pdf'], 'synthetic.txt', { type: 'text/plain' }),
+    )
+    expect((await screen.findByRole('alert')).textContent).toContain('Choose a PDF file.')
+
+    resume = {
+      candidateData,
+      confirmedAt: '2026-08-18T03:00:00.000Z',
+      createdAt: '2026-08-18T01:00:00.000Z',
+      failureCode: null,
+      fileSizeBytes: 1024,
+      id: '80000000-0000-4000-8000-000000000001',
+      lastAnalyzedAt: '2026-08-18T02:00:00.000Z',
+      originalFilename: 'synthetic-resume.pdf',
+      status: 'ready',
+      updatedAt: '2026-08-18T03:00:00.000Z',
+    }
+    view.unmount()
+    window.history.pushState({}, '', '/app/resume')
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Candidate context ready.' })
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Delete resume' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Turn your experience into interview context.',
+      }),
+    ).toBeTruthy()
   })
 
   it('renders a useful not-found page', async () => {

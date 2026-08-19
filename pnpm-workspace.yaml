@@ -8,7 +8,11 @@ allowBuilds:
 catalog:
   '@hookform/resolvers': ^5.7.1
   '@supabase/supabase-js': ^2.112.2
+  '@types/multer': ^2.2.0
   '@types/node': ^24.13.3
+  multer: ^2.2.0
+  openai: ^7.4.0
+  pdfjs-dist: ^6.2.108
   react-hook-form: ^7.85.0
   zod: ^4.4.3
 

@@ -8,7 +8,7 @@ export function validateBody(schema: ZodType) {
     const result = schema.safeParse(request.body)
 
     if (!result.success) {
-      sendError(response, 400, 'INVALID_REQUEST_BODY', 'Check the submitted profile fields.')
+      sendError(response, 400, 'INVALID_REQUEST_BODY', 'Check the submitted fields.')
       return
     }
 

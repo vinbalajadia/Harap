@@ -38,6 +38,8 @@ const profileFields = {
     .max(100, 'Use no more than 100 characters.'),
 }
 
+export const targetRoleSchema = profileFields.targetRole
+
 export const onboardingProfileSchema = z.object(profileFields).strict()
 
 export const profileUpdateSchema = z

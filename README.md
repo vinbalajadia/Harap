@@ -2,9 +2,9 @@
 
 **Face every interview with confidence.**
 
-Harap is an adaptive interview-coaching platform for aspiring software engineers. Phase 2 adds a secure identity and profile foundation on top of the Phase 1 monorepo.
+Harap is an adaptive interview-coaching platform for aspiring software engineers. Phase 3 adds a secure, user-reviewed candidate-background layer on top of the existing identity and profile foundation.
 
-## Phase 2 capabilities
+## Current capabilities
 
 - email/password registration with email confirmation;
 - login, logout, session restoration, and safe intended-route redirects;
@@ -14,8 +14,13 @@ Harap is an adaptive interview-coaching platform for aspiring software engineers
 - server-side Supabase access-token verification;
 - PostgreSQL constraints, profile provisioning, Row Level Security, and pgTAP policy tests;
 - shared Zod contracts, strict TypeScript, mocked auth/API tests, and CI.
+- one private PDF resume per authenticated user, with safe replace and delete controls;
+- bounded in-process PDF text extraction without OCR or shell execution;
+- backend-only OpenAI structured extraction into skills, technologies, achievements, experience, projects, and education;
+- candidate review, correction, manual entry, and explicit confirmation before context becomes ready;
+- database and Storage RLS, a 5 MiB limit, route-specific abuse controls, and synthetic automated tests.
 
-Harap does not contain a Supabase service-role or secret key. Browser and API access use the low-privilege anon key; profile queries also carry the authenticated user's verified access token so PostgreSQL RLS remains authoritative.
+Harap does not contain a Supabase service-role key. Browser and API data access use the low-privilege anon key plus the verified user's access token so PostgreSQL and Storage RLS remain authoritative. `OPENAI_API_KEY` is optional, backend-only, and never uses a `VITE_*` name.
 
 ## Requirements
 
@@ -40,7 +45,7 @@ cp apps/web/.env.example apps/web/.env.local
 cp apps/api/.env.example apps/api/.env
 ```
 
-Set the Supabase URL and anon key in both environment files, then apply the migration to a local stack:
+Set the Supabase URL and anon key in both environment files. To enable automatic resume analysis, also set `OPENAI_API_KEY` in `apps/api/.env`; manual candidate entry remains available without it. Then apply the migrations to a local stack:
 
 ```bash
 pnpm db:start
@@ -72,4 +77,4 @@ pnpm db:reset
 pnpm db:test
 ```
 
-Read [authentication setup](docs/authentication.md), [database and RLS](docs/database.md), [local development](docs/local-development.md), [architecture](docs/architecture.md), and the [security checklist](docs/security.md) before connecting a hosted Supabase project.
+Read [resume intelligence](docs/resume-intelligence.md), [authentication setup](docs/authentication.md), [database and RLS](docs/database.md), [local development](docs/local-development.md), [architecture](docs/architecture.md), and the [security checklist](docs/security.md) before connecting a hosted Supabase project.

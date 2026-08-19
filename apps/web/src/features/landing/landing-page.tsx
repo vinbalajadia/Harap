@@ -56,7 +56,7 @@ export function LandingPage() {
           </div>
 
           <aside
-            aria-label="Phase 2 status"
+            aria-label="Phase 3 status"
             className="rounded-xl border border-border bg-card p-5 shadow-2xl shadow-black/20"
             id="status"
           >
@@ -65,8 +65,8 @@ export function LandingPage() {
                 <ShieldCheck aria-hidden="true" className="size-4" />
               </span>
               <div>
-                <p className="font-medium">Accounts ready</p>
-                <p className="text-sm text-muted-foreground">Verified, private, and personal</p>
+                <p className="font-medium">Resume intelligence ready</p>
+                <p className="text-sm text-muted-foreground">Private, reviewable, and yours</p>
               </div>
             </div>
             <div className="mt-5 border-t border-border pt-4">
@@ -93,7 +93,7 @@ export function LandingPage() {
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p>Harap · Built for deliberate practice.</p>
-        <p>Phase 2 identity foundation</p>
+        <p>Phase 3 candidate context</p>
       </footer>
     </div>
   )

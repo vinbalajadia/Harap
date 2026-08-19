@@ -19,16 +19,16 @@
 
 :root {
   color-scheme: dark;
-  --background: oklch(0.13 0.006 285.8);
-  --foreground: oklch(0.97 0.002 286.4);
-  --card: oklch(0.17 0.006 285.8);
-  --card-foreground: oklch(0.97 0.002 286.4);
-  --primary: oklch(0.97 0.002 286.4);
-  --primary-foreground: oklch(0.14 0.006 285.8);
-  --muted: oklch(0.22 0.007 285.8);
-  --muted-foreground: oklch(0.69 0.011 286.1);
-  --border: oklch(0.27 0.008 285.8);
-  --ring: oklch(0.72 0.012 286.1);
+  --background: oklch(0.14 0.025 255);
+  --foreground: oklch(0.97 0.008 240);
+  --card: oklch(0.18 0.029 254);
+  --card-foreground: oklch(0.97 0.008 240);
+  --primary: oklch(0.76 0.16 157);
+  --primary-foreground: oklch(0.13 0.025 255);
+  --muted: oklch(0.23 0.031 254);
+  --muted-foreground: oklch(0.72 0.025 247);
+  --border: oklch(0.29 0.033 253);
+  --ring: oklch(0.76 0.16 157);
   --destructive: oklch(0.65 0.2 25);
   --success: oklch(0.72 0.18 150);
 }
@@ -61,7 +61,7 @@ a {
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--foreground) 20%, transparent);
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

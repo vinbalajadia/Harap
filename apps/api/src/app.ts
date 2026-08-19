@@ -14,23 +14,49 @@ import {
   SupabaseProfileRepository,
   type ProfileRepository,
 } from './repositories/profile.repository.js'
+import {
+  SupabaseResumeRepository,
+  type ResumeRepository,
+} from './repositories/resume.repository.js'
 import { createApiRouter } from './routes/index.js'
 import { SupabaseAuthService, type AuthService } from './services/auth.service.js'
+import { PdfJsTextExtractor, type PdfTextExtractor } from './services/pdf-text-extractor.js'
 import { ProfileService } from './services/profile.service.js'
+import {
+  createResumeCandidateParser,
+  type ResumeCandidateParser,
+} from './services/resume-candidate-parser.js'
+import { ResumeService } from './services/resume.service.js'
 
 export interface CreateAppOptions {
   authService?: AuthService
+  analysisRateLimitMax?: number
+  candidateParser?: ResumeCandidateParser
+  pdfTextExtractor?: PdfTextExtractor
   profileRepository?: ProfileRepository
   rateLimitMax?: number
+  resumeRepository?: ResumeRepository
+  uploadRateLimitMax?: number
 }
 
 export function createApp({
   authService = new SupabaseAuthService(),
+  analysisRateLimitMax,
+  candidateParser = createResumeCandidateParser(),
+  pdfTextExtractor = new PdfJsTextExtractor(),
   profileRepository = new SupabaseProfileRepository(),
   rateLimitMax = 100,
+  resumeRepository = new SupabaseResumeRepository(),
+  uploadRateLimitMax,
 }: CreateAppOptions = {}): Express {
   const app = express()
   const profileService = new ProfileService(profileRepository)
+  const resumeService = new ResumeService(
+    resumeRepository,
+    pdfTextExtractor,
+    candidateParser,
+    profileService,
+  )
 
   app.disable('x-powered-by')
   app.use(requestContext)
@@ -81,7 +107,13 @@ export function createApp({
     }),
   )
   app.use(requestLogger)
-  app.use('/api/v1', createApiRouter(authService, profileService))
+  app.use(
+    '/api/v1',
+    createApiRouter(authService, profileService, resumeService, {
+      ...(analysisRateLimitMax === undefined ? {} : { analysisRateLimitMax }),
+      ...(uploadRateLimitMax === undefined ? {} : { uploadRateLimitMax }),
+    }),
+  )
   app.use(notFound)
   app.use(errorHandler)
 

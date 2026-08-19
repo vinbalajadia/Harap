@@ -1,3 +1,5 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export type Database = {
   public: {
     CompositeTypes: Record<string, never>
@@ -35,6 +37,51 @@ export type Database = {
           onboarding_completed?: boolean
           preferred_language?: string | null
           target_role?: string | null
+        }
+      }
+      resumes: {
+        Insert: {
+          candidate_data?: Json | null
+          confirmed_at?: string | null
+          content_sha256: string
+          created_at?: string
+          failure_code?: string | null
+          file_size_bytes: number
+          id?: string
+          last_analyzed_at?: string | null
+          original_filename: string
+          status?: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Relationships: []
+        Row: {
+          candidate_data: Json | null
+          confirmed_at: string | null
+          content_sha256: string
+          created_at: string
+          failure_code: string | null
+          file_size_bytes: number
+          id: string
+          last_analyzed_at: string | null
+          original_filename: string
+          status: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          candidate_data?: Json | null
+          confirmed_at?: string | null
+          content_sha256?: string
+          failure_code?: string | null
+          file_size_bytes?: number
+          id?: string
+          last_analyzed_at?: string | null
+          original_filename?: string
+          status?: string
+          storage_path?: string
         }
       }
     }

@@ -1,4 +1,4 @@
-# Phase 2 security checklist
+# Phase 3 security checklist
 
 - [x] No service-role or secret Supabase key is present in source or examples.
 - [x] Browser variables contain only public URL/anon-key configuration.
@@ -16,6 +16,23 @@
 - [x] Bearer-header authentication does not rely on ambient cookies; CSRF is documented and will be revisited if transport changes.
 - [x] Harap creates no custom persistent token store and renders profile values through React escaping.
 - [x] Production browser source maps remain disabled.
+- [x] Resume uploads require authentication before multipart parsing.
+- [x] Client, Express, database metadata, and Storage all enforce the 5 MiB PDF limit where applicable.
+- [x] Extension, MIME, and `%PDF-` signature are checked; raw filenames never become object paths.
+- [x] Private object paths use verified user ID plus a generated resume ID.
+- [x] Resume rows and objects are protected by separate self-only RLS policies.
+- [x] No public bucket, signed public URL, or service-role bypass is used.
+- [x] PDF parsing is in-process, page/character/time bounded, and never renders, executes, shells out, or invokes OCR.
+- [x] Extracted resume text is ephemeral and is not stored or logged.
+- [x] OpenAI is backend-only, uses strict structured output, disables retries, and maps provider details to safe errors.
+- [x] Resume text is explicitly marked untrusted data and cannot replace system instructions.
+- [x] Model output is validated again with the shared strict Zod schema before persistence.
+- [x] Structured fields exclude sensitive identity/relationship/photo data, and the prompt minimizes names and contact details while preserving legitimate professional names.
+- [x] Resume dates must be explicitly supported and associated; missing or ambiguous values stay blank for human review rather than being inferred.
+- [x] Successful provider observability contains only model and aggregate token counts; prompts, resume text, and candidate data remain excluded.
+- [x] Upload and analysis have stricter hourly rate limits than ordinary API traffic.
+- [x] Replacement compensates a failed database switch and deletes the obsolete object only after the new row is durable.
+- [x] The UI provides review, manual correction, retry, replace, and confirmed deletion controls.
 - [ ] Hosted redirect allowlists and email confirmation are configured by the project owner.
 - [ ] Hosted lifecycle and email delivery are manually verified after configuration.
 - [ ] Deployment proxy topology is verified before enabling Express `trust proxy`.

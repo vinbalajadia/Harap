@@ -29,7 +29,7 @@
     "@harap/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "^9.39.2",
-    "typescript": "~6.0.2",
+    "typescript": "~7.0.2",
     "vitest": "^4.1.0"
   }
 }
